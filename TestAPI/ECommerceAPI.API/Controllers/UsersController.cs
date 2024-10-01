@@ -16,6 +16,7 @@ namespace ECommerceAPI.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize(AuthenticationSchemes = "Admin", Roles = "Admin")] // Only users authenticated with "Admin" scheme and having "Admin" role can access this controller
     public class UsersController : ControllerBase
     {
         readonly IMediator _mediator;
@@ -26,7 +27,6 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(AuthenticationSchemes = "Admin")]
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Users, ActionType = ActionType.Reading, Definition = "Get All Users")]
         public async Task<IActionResult> GetAllUsers([FromQuery] GetAllUsersQueryRequest request)
         {
@@ -42,7 +42,6 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpDelete("{Id}")]
-        [Authorize(AuthenticationSchemes = "Admin")]
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Users, ActionType = ActionType.Deleting, Definition = "Remove User")]
         public async Task<IActionResult> RemoveUser([FromRoute] RemoveUserCommandRequest request)
         {
@@ -58,7 +57,6 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpGet("[action]/{UserIdOrName}")]
-        [Authorize(AuthenticationSchemes = "Admin")]
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Users, ActionType = ActionType.Reading, Definition = "Get Roles To User")]
         public async Task<IActionResult> GetRolesToUser([FromRoute] GetRolesToUserQueryRequest request)
         {
@@ -67,7 +65,6 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpPost("[action]")]
-        [Authorize(AuthenticationSchemes = "Admin")]
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Users, ActionType = ActionType.Writing, Definition = "Assign Role To User")]
         public async Task<IActionResult> AssignRoleToUser(AssignRoleToUserCommandRequest request)
         {
@@ -76,7 +73,6 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpGet("[action]")]
-        [Authorize(AuthenticationSchemes = "Admin")]
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Users, ActionType = ActionType.Reading, Definition = "Get Menus Of User Roles")]
         public async Task<IActionResult> GetMenusOfUserRoles([FromQuery] GetMenusOfUserRolesQueryRequest request)
         {

@@ -28,7 +28,6 @@ namespace ECommerceAPI.API.Controllers
         [HttpGet("[action]")]
         public async Task<IActionResult> GetAllProduct([FromQuery] GetAllProductQueryRequest request)
         {
-
             GetAllProductQueryResponse response = await _mediator.Send(request);
             return Ok(response);
         }
@@ -48,38 +47,38 @@ namespace ECommerceAPI.API.Controllers
         }
 
         [HttpPost("[action]")]
-        [Authorize(AuthenticationSchemes = "Admin")]
+        [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")] // Allow both Admin and Seller roles
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Products, ActionType = ActionType.Writing, Definition = "Create Product")]
         public async Task<IActionResult> CreateProduct(CreateProductCommandRequest request)
         {
             CreateProductCommandResponse response = await _mediator.Send(request);
-            return Ok();
+            return Ok(response);
         }
 
         [HttpPost("[action]")]
+        [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")] // Allow both Admin and Seller roles
         public async Task<IActionResult> CreateProducts(CreateProductsCommandRequest request)
         {
             CreateProductsCommandResponse response = await _mediator.Send(request);
-            return Ok();
+            return Ok(response);
         }
 
         [HttpPut("[action]")]
-        [Authorize(AuthenticationSchemes = "Admin")]
+        [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")] // Allow both Admin and Seller roles
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Products, ActionType = ActionType.Updating, Definition = "Update Product")]
-        public async Task<IActionResult> UpdateProduct (UpdateProductCommandRequest request)
+        public async Task<IActionResult> UpdateProduct(UpdateProductCommandRequest request)
         {
             UpdateProductCommandResponse response = await _mediator.Send(request);
-            return Ok();
+            return Ok(response);
         }
 
         [HttpDelete("[action]/{Id}")]
-        [Authorize(AuthenticationSchemes = "Admin")]
+        [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")] // Allow both Admin and Seller roles
         [AuthorizeDefinition(Menu = AuthorizeDefinitionConstants.Products, ActionType = ActionType.Deleting, Definition = "Remove Product")]
         public async Task<IActionResult> RemoveProduct([FromRoute] RemoveProductCommandRequest request)
         {
             RemoveProductCommandResponse response = await _mediator.Send(request);
-            return Ok();
+            return Ok(response);
         }
-
     }
 }

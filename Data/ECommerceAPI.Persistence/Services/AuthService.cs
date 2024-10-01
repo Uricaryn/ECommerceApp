@@ -31,11 +31,15 @@ namespace ECommerceAPI.Persistence.Services
                 user = await _userManager.FindByEmailAsync(UserNameOrEmail);
             if (user == null)
                 throw new Exception("User not found!");
-            SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, Password, false);
 
-            if(result.Succeeded)
+            SignInResult result = await _signInManager.CheckPasswordSignInAsync(user, Password, false);
+            if (result.Succeeded)
             {
-                TokenDTO token = _tokenHandler.CreateAccessToken(accessTokenLifeTime, user);
+                // Retrieve the roles of the user
+                IList<string> roles = await _userManager.GetRolesAsync(user);
+
+                // Pass the roles to the token handler
+                TokenDTO token = _tokenHandler.CreateAccessToken(accessTokenLifeTime, user, roles);
                 await _userService.UpdateRefreshToken(token.RefreshToken, user, token.Expiration, 1200);
 
                 return new()
@@ -45,6 +49,7 @@ namespace ECommerceAPI.Persistence.Services
                     RefreshToken = token.RefreshToken,
                 };
             }
+
             throw new Exception("Authentication error!");
         }
 
@@ -52,10 +57,15 @@ namespace ECommerceAPI.Persistence.Services
         {
             AppUser? user = _userManager.Users.FirstOrDefault(u => u.RefreshToken == refreshToken);
 
-            if(user != null && user.RefreshTokenEndDate > DateTime.UtcNow)
+            if (user != null && user.RefreshTokenEndDate > DateTime.UtcNow)
             {
-                TokenDTO token = _tokenHandler.CreateAccessToken(3600, user);
+                // Retrieve the roles of the user
+                IList<string> roles = await _userManager.GetRolesAsync(user);
+
+                // Pass the roles to the token handler
+                TokenDTO token = _tokenHandler.CreateAccessToken(3600, user, roles);
                 await _userService.UpdateRefreshToken(token.RefreshToken, user, token.Expiration, 1200);
+
                 return token;
             }
             throw new Exception("User not found!");

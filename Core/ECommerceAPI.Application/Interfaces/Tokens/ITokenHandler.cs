@@ -10,7 +10,7 @@ namespace ECommerceAPI.Application.Interfaces.Tokens
 {
     public interface ITokenHandler
     {
-        TokenDTO CreateAccessToken(int second, AppUser user);
+        TokenDTO CreateAccessToken(int second, AppUser user, IList<string> roles);  // Updated to include roles
         string CreateRefreshToken();
     }
 }

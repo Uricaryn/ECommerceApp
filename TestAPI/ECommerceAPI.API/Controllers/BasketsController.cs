@@ -13,7 +13,7 @@ namespace ECommerceAPI.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = "Admin")]
+    [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")]
     public class BasketsController : ControllerBase
     {
         readonly IMediator _mediator;

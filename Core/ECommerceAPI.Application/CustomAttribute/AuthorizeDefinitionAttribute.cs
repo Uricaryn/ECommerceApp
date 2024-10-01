@@ -12,5 +12,6 @@ namespace ECommerceAPI.Application.CustomAttribute
         public string Menu { get; set; }
         public string Definition { get; set; }
         public ActionType ActionType { get; set; }
+        public string[] RequiredRoles { get; set; }
     }
 }

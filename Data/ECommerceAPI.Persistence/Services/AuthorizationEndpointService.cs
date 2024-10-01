@@ -31,16 +31,17 @@ namespace ECommerceAPI.Persistence.Services
             _roleManager = roleManager;
         }
 
-        public async Task AssignRoleEndpointAsync(string[] roles, string menu, string code, Type type)
+        public async Task AssignRoleEndpointAsync(string[] roles, string menuName, string code, Type type)
         {
-            Menu _menu = await _menuReadRepository.GetSingleAsync(m => m.Name == menu);
+            // Menu nesnesini veritabanından menü adıyla alıyoruz
+            Menu _menu = await _menuReadRepository.GetSingleAsync(m => m.Name == menuName);
 
-            if(_menu == null)
+            if (_menu == null)
             {
-                _menu = new()
+                _menu = new Menu
                 {
                     Id = Guid.NewGuid(),
-                    Name = menu,
+                    Name = menuName
                 };
 
                 await _menuWriteRepository.AddAsync(_menu);
@@ -50,46 +51,27 @@ namespace ECommerceAPI.Persistence.Services
             Endpoint? endpoint = await _endpointReadRepository.Table
                 .Include(e => e.Menu)
                 .Include(e => e.Roles)
-                .FirstOrDefaultAsync(e => e.Code == code && e.Menu.Name == menu);
+                .FirstOrDefaultAsync(e => e.Code == code && e.Menu.Name == menuName);
 
-            if(endpoint == null)
+            if (endpoint == null)
             {
-                var action = _applicationService.GetAuthorizeDefinitionEndpoints(type)
-                    .FirstOrDefault(m => m.Name == menu)
-                    ?.Actions.FirstOrDefault(a => a.Code == code);
-
-                endpoint = new()
+                // Yeni endpoint oluşturuyoruz
+                endpoint = new Endpoint
                 {
                     Id = Guid.NewGuid(),
-                    Code = action.Code,
-                    ActionType = action.ActionType,
-                    HttpType = action.HttpType,
-                    Definition = action.Definition,
+                    Code = code,
+                    ActionType = "GET",
+                    HttpType = "GET",
+                    Definition = "Admin paneli erişimi",
                     MenuId = _menu.Id,
+                    Menu = _menu
                 };
 
                 await _endpointsWriteRepository.AddAsync(endpoint);
-                try
-                {
-                    await _endpointsWriteRepository.SaveAsync();
-
-                }
-                catch (Exception ex)
-                {
-
-                }
+                await _endpointsWriteRepository.SaveAsync();
             }
-
-            foreach (var role in endpoint.Roles)
-                endpoint.Roles.Remove(role);
-                
-            var appRoles = await _roleManager.Roles.Where(r => roles.Contains(r.Name)).ToListAsync();
-
-            foreach (var role in appRoles)
-                endpoint.Roles.Add(role);
-
-            await _endpointsWriteRepository.SaveAsync();
         }
+
 
         public async Task<List<string>> GetRolesToEndpointAsync(string code, string menu)
         {

@@ -12,6 +12,5 @@ namespace ECommerceAPI.Application.Features.Commands.Products.CreateProduct
     public class CreateProductCommandRequest : IRequest<CreateProductCommandResponse>
     {
         public CreateProductDTO Product { get; set; }
-        public IFormFile ImageFile { get; set; }
     }
 }

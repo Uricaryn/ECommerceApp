@@ -19,24 +19,36 @@ namespace ECommerceAPI.Infrastructure.Services.Tokens
             _configuration = configuration;
         }
 
-        public TokenDTO CreateAccessToken(int second, AppUser user)
+        public TokenDTO CreateAccessToken(int second, AppUser user, IList<string> roles)
         {
             TokenDTO token = new();
-            SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(_configuration["Token:SecurityKey"])); //SecurityKey in simetriğini alıyoruz
-            SigningCredentials signingCredentials = new(securityKey, SecurityAlgorithms.HmacSha256); //Şifrelenmiş kimliği oluşturuyoruz
+            SymmetricSecurityKey securityKey = new(Encoding.UTF8.GetBytes(_configuration["Token:SecurityKey"]));
+            SigningCredentials signingCredentials = new(securityKey, SecurityAlgorithms.HmacSha256);
+
+            // Adding user claims, including roles
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name, user.UserName),
+                new(ClaimTypes.NameIdentifier, user.Id)
+            };
+
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             token.Expiration = DateTime.UtcNow.AddSeconds(second);
             JwtSecurityToken securityToken = new(
                 audience: _configuration["Token:Audience"],
                 issuer: _configuration["Token:Issuer"],
                 expires: token.Expiration,
-                notBefore: DateTime.UtcNow, //Token ne zaman aktif olsun. (hemen)
+                notBefore: DateTime.UtcNow,
                 signingCredentials: signingCredentials,
-                claims: new List<Claim> { new(ClaimTypes.Name, user.UserName) });
+                claims: claims
+            );
 
-            JwtSecurityTokenHandler securityTokenHandler = new(); //Token oluşturucu sınıfı
+            JwtSecurityTokenHandler securityTokenHandler = new();
             token.AccessToken = securityTokenHandler.WriteToken(securityToken);
-
             token.RefreshToken = CreateRefreshToken();
 
             return token;

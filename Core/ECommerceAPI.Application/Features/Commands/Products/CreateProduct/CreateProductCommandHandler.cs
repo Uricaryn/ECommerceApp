@@ -24,17 +24,9 @@ namespace ECommerceAPI.Application.Features.Commands.Products.CreateProduct
 
         public async Task<CreateProductCommandResponse> Handle(CreateProductCommandRequest request, CancellationToken cancellationToken)
         {
-            if (request.ImageFile != null)
-            {
-                var imageUrl = await FileUploadHelper.UploadImageAsync(request.ImageFile, "wwwroot/images");
-                request.Product.ImageUrl = imageUrl; 
-            }
-
-            
             await _writeRepository.AddAsync(_mapper.Map<Product>(request.Product));
             await _writeRepository.SaveAsync();
-
-            return new CreateProductCommandResponse();
+            return new();
         }
 
     }

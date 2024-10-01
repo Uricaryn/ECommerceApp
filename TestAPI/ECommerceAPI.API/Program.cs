@@ -22,37 +22,44 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpContextAccessor();//Client'tan gelen request neticesinde oluşturulan HttpContext nesnesine katmanlardaki class'lar üzerinden(busineess logic) erişebilmemizi sağlayan bir servistir.
+// Add services to the container
+builder.Services.AddHttpContextAccessor(); // To access HttpContext in service classes
 builder.Services.AddPersistenceService(builder.Configuration);
 builder.Services.AddApplicationService();
 builder.Services.AddInfrastructureService();
-builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy.WithOrigins("http://localhost:5173", "https://localhost:5173").AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
-SqlColumn sqlColumn = new SqlColumn();
-sqlColumn.ColumnName = "UserName";
-sqlColumn.DataType = System.Data.SqlDbType.NVarChar;
-sqlColumn.PropertyName = "UserName";
-sqlColumn.DataLength = 50;
-sqlColumn.AllowNull = true;
-ColumnOptions columnOpt = new ColumnOptions();
-columnOpt.Store.Remove(StandardColumn.Properties);
-columnOpt.Store.Add(StandardColumn.LogEvent);
-columnOpt.AdditionalColumns = new Collection<SqlColumn> { sqlColumn };
+// Add CORS policies
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+    policy.WithOrigins("http://localhost:5173", "http://localhost:5174")
+          .AllowAnyHeader()
+          .AllowAnyMethod()
+          .AllowCredentials()));
+
+// Configure Serilog logging
+var columnOptions = new ColumnOptions
+{
+    AdditionalColumns = new Collection<SqlColumn>
+    {
+        new SqlColumn { ColumnName = "UserName", DataType = System.Data.SqlDbType.NVarChar, PropertyName = "UserName", DataLength = 50, AllowNull = true }
+    }
+};
+columnOptions.Store.Remove(StandardColumn.Properties);
+columnOptions.Store.Add(StandardColumn.LogEvent);
 
 Logger log = new LoggerConfiguration()
     .WriteTo.Console()
     .WriteTo.File("logs/log.txt")
     .WriteTo.MSSqlServer(builder.Configuration.GetConnectionString("MSSQL Server"),
-        tableName: "logs",
-        autoCreateSqlTable: true,
-        appConfiguration: null,
-        columnOptions: columnOpt)
+                         tableName: "logs",
+                         autoCreateSqlTable: true,
+                         columnOptions: columnOptions)
     .Enrich.FromLogContext()
     .Enrich.With<UsernameCustomColumn>()
     .MinimumLevel.Information()
     .CreateLogger();
 builder.Host.UseSerilog(log);
 
+// Add HTTP logging
 builder.Services.AddHttpLogging(logging =>
 {
     logging.LoggingFields = HttpLoggingFields.All;
@@ -62,20 +69,20 @@ builder.Services.AddHttpLogging(logging =>
     logging.ResponseBodyLogLimit = 4096;
 });
 
+// Configure controllers and FluentValidation
 builder.Services.AddControllers(options =>
 {
-    options.Filters.Add<ValidationFilter>();
-    options.Filters.Add<RolePermissionFilter>();
+    options.Filters.Add<ValidationFilter>(); // Validation filter
+    options.Filters.Add<RolePermissionFilter>(); // Role Permission filter
 })
-            .AddFluentValidation(configuration => configuration.RegisterValidatorsFromAssemblyContaining<UpdateProductCommandValidator>())
-            .ConfigureApiBehaviorOptions(o => o.SuppressModelStateInvalidFilter = true);
-builder.Services.AddControllers();
+.AddFluentValidation(configuration => configuration.RegisterValidatorsFromAssemblyContaining<UpdateProductCommandValidator>())
+.ConfigureApiBehaviorOptions(o => o.SuppressModelStateInvalidFilter = true);
+
+// Configure Swagger for JWT authentication
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "ECommerce API", Version = "v1" });
-
-    // JWT Bearer Token için güvenlik tanımını ekliyoruz
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
@@ -83,61 +90,90 @@ builder.Services.AddSwaggerGen(c =>
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey
     });
-
-    // Güvenlik gereksinimlerini tanımlıyoruz
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
-            new string[] { }
+            Array.Empty<string>()
         }
     });
 });
 
-//builder.Services.AddControllers()
-//    .AddJsonOptions(options =>
-//    {
-//        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
-//    });
-
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer("Admin", option =>
+// Configure Authentication with multiple JWT schemes
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer("Admin", options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        option.TokenValidationParameters = new()
-        {
-            ValidateAudience = true, //Oluşturulacak token değerini kimlerin/hangi originlerin/sitelerin kullanacağını belirlediğimiz değer -> www.kullanıcı.com
-            ValidateIssuer = true, //Olulturulacak token değerinin kimin dağıttığını ifade edeceğimiz alan -> www.myapi.com
-            ValidateLifetime = true, //Oluşturulan token değerinin süresini kontrol edecek olan doğrulamadır
-            ValidateIssuerSigningKey = true, //Üretilecek token değerinin uygulamamıza ait bir değer olduğunu ifade eden security key verisinin doğrulanmasıdır
+        ValidateAudience = true,
+        ValidateIssuer = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidAudience = builder.Configuration["Token:Audience"],
+        ValidIssuer = builder.Configuration["Token:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Token:SecurityKey"])),
+        LifetimeValidator = (notBefore, expires, securityToken, validationParameters) => expires != null ? expires > DateTime.UtcNow : false,
+        NameClaimType = ClaimTypes.Name,
+        RoleClaimType = ClaimTypes.Role
+    };
+})
+.AddJwtBearer("Seller", options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateAudience = true,
+        ValidateIssuer = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidAudience = builder.Configuration["Token:Audience"],
+        ValidIssuer = builder.Configuration["Token:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Token:SecurityKey"])),
+        LifetimeValidator = (notBefore, expires, securityToken, validationParameters) => expires != null ? expires > DateTime.UtcNow : false,
+        NameClaimType = ClaimTypes.Name,
+        RoleClaimType = ClaimTypes.Role
+    };
+});
 
-            ValidAudience = builder.Configuration["Token:Audience"],
-            ValidIssuer = builder.Configuration["Token:Issuer"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Token:SecurityKey"])),
-            LifetimeValidator = (notBefore, expires, securityToken, validationParameters) => expires != null ? expires > DateTime.UtcNow : false,
-
-            NameClaimType = ClaimTypes.Name  //JWT üzerinde Name claim ne karşılık gelen değeri bu işlem ile User.Identity.Name propertysinden elde edebilirz.
-        };
+// Add Authorization policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminPolicy", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddAuthenticationSchemes("Admin");
+        policy.RequireRole("Admin");
     });
+
+    options.AddPolicy("SellerPolicy", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddAuthenticationSchemes("Seller");
+        policy.RequireRole("Seller");
+    });
+});
 
 var app = builder.Build();
 
+// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
-app.UseSwagger();
-app.UseSwaggerUI();
-
+// Redirect root to Swagger
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
@@ -145,28 +181,41 @@ app.Use(async (context, next) =>
         context.Response.Redirect("/swagger");
         return;
     }
-
     await next();
 });
 
+// Global exception handler
 app.ConfigureExceptionHandler<Program>(app.Services.GetRequiredService<ILogger<Program>>());
 
 app.UseSerilogRequestLogging();
 app.UseHttpLogging();
 
-app.UseCors();
+app.UseCors(); // Allow CORS
 app.UseHttpsRedirection();
 
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseAuthentication(); // Authenticate users
+app.UseAuthorization();  // Authorize users based on policies
+
 app.Use(async (context, next) =>
 {
-    var username = context.User?.Identity?.IsAuthenticated != null || true ? context.User.Identity.Name : null;
-    LogContext.PushProperty("UserName", username);
+    if (context.User?.Identity?.IsAuthenticated == true)
+    {
+        // Extract roles from the claims
+        var roles = context.User.Claims
+            .Where(c => c.Type == ClaimTypes.Role)
+            .Select(c => c.Value);
+
+        // Join roles into a single string
+        var rolesString = string.Join(",", roles);
+
+        // Push roles to the log context
+        LogContext.PushProperty("UserRoles", rolesString);
+    }
+
     await next();
 });
 
+
 app.MapControllers();
-//app.MapHubs();
 
 app.Run();

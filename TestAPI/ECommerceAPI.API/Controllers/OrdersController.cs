@@ -13,7 +13,7 @@ namespace ECommerceAPI.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize(AuthenticationSchemes = "Admin")]
+    [Authorize(AuthenticationSchemes = "Admin,Seller", Roles = "Admin,Seller")] // Allow both Admin and Seller roles to access this controller
     public class OrdersController : ControllerBase
     {
         readonly IMediator _mediator;

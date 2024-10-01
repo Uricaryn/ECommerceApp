@@ -26,7 +26,7 @@ namespace ECommerceAPI.API.Controllers
 
         // Yorum ekleme API
         [HttpPost]
-        [Authorize(Roles = "Customer")] // Kullanıcı "Customer" rolünde olmalı
+        [Authorize(Roles = "Customer")]
         public async Task<IActionResult> AddComment([FromBody] CreateCommentCommandRequest request)
         {
             var result = await _mediator.Send(request);
