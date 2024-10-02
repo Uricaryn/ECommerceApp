@@ -74,10 +74,59 @@ namespace ECommerceAPI.Persistence.Services
                     NameSurname = u.NameSurname,
                     UserName = u.UserName,
                     Email = u.Email,
+                    Adress = u.Address,
+                    DateOfBirth = u.DateOfBirth,
+                    ProfilePictureUrl = u.ProfilePictureUrl,
+                    Bio = u.Bio,
+                    LastUpdatedDate = u.LastUpdatedDate,
                     TwoFactorEnabled = u.TwoFactorEnabled
                 }).ToListAsync()
             };
         }
+
+        public async Task<UpdatedUserDTO> UpdateUserAsync(string userId, UpdatedUserDTO updateUserDTO)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                throw new Exception("User not found!");
+
+            // Kullanıcı bilgilerini güncelle
+            user.NameSurname = updateUserDTO.NameSurname ?? user.NameSurname;
+            user.UserName = updateUserDTO.UserName ?? user.UserName;
+            user.Email = updateUserDTO.Email ?? user.Email;
+            user.PhoneNumber = updateUserDTO.PhoneNumber ?? user.PhoneNumber;
+            user.Address = updateUserDTO.Address ?? user.Address;
+            user.Bio = updateUserDTO.Bio ?? user.Bio;
+            user.DateOfBirth = updateUserDTO.DateOfBirth ?? user.DateOfBirth;
+            user.ProfilePictureUrl = updateUserDTO.ProfilePictureUrl ?? user.ProfilePictureUrl;
+            user.LastUpdatedDate = DateTime.UtcNow;
+
+            // Güncellemeyi veritabanına kaydet
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                throw new Exception(string.Join("; ", result.Errors.Select(e => e.Description)));
+            }
+
+            // Güncellenen kullanıcıyı DTO olarak döndür
+            return new UpdatedUserDTO
+            {
+                Id = user.Id,
+                NameSurname = user.NameSurname,
+                UserName = user.UserName,
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                Address = user.Address,
+                DateOfBirth = user.DateOfBirth,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Bio = user.Bio,
+                LastUpdatedDate = user.LastUpdatedDate,
+                TwoFactorEnabled = user.TwoFactorEnabled
+            };
+        }
+
+
+
 
         public async Task RemoveUserAsync(string Id)
         {

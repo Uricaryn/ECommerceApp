@@ -139,6 +139,22 @@ builder.Services.AddAuthentication(options =>
         NameClaimType = ClaimTypes.Name,
         RoleClaimType = ClaimTypes.Role
     };
+})
+.AddJwtBearer("Customer", options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateAudience = true,
+        ValidateIssuer = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidAudience = builder.Configuration["Token:Audience"],
+        ValidIssuer = builder.Configuration["Token:Issuer"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Token:SecurityKey"])),
+        LifetimeValidator = (notBefore, expires, securityToken, validationParameters) => expires != null ? expires > DateTime.UtcNow : false,
+        NameClaimType = ClaimTypes.Name,
+        RoleClaimType = ClaimTypes.Role
+    };
 });
 
 // Add Authorization policies
@@ -157,7 +173,15 @@ builder.Services.AddAuthorization(options =>
         policy.AddAuthenticationSchemes("Seller");
         policy.RequireRole("Seller");
     });
+
+    options.AddPolicy("CustomerPolicy", policy =>
+    {
+        policy.RequireAuthenticatedUser();
+        policy.AddAuthenticationSchemes("Customer");
+        policy.RequireRole("Customer");
+    });
 });
+
 
 var app = builder.Build();
 

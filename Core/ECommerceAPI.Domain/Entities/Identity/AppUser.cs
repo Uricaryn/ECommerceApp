@@ -14,5 +14,13 @@ namespace ECommerceAPI.Domain.Entities.Identity
         public DateTime? RefreshTokenEndDate { get; set; }
         public ICollection<Basket> Baskets { get; set; }
         public ICollection<Comment> Comments { get; set; } = new List<Comment>();
+
+     
+        public string? Address { get; set; }
+        public DateTime? DateOfBirth { get; set; }
+        public string? ProfilePictureUrl { get; set; }
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
+        public DateTime? LastUpdatedDate { get; set; }
+        public string? Bio { get; set; }
     }
 }

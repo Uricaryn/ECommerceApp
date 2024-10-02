@@ -18,6 +18,6 @@ namespace ECommerceAPI.Application.DTOs.Prodcuts
         public string CategoryName { get; set; }
         public int Rating { get; set; } = 0;
         public int RatingCount { get; set; } = 0;
-
+        public string Description { get; set; }
     }
 }

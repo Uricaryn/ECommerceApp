@@ -19,7 +19,8 @@ namespace ECommerceAPI.Domain.Entities
         public int Rating { get; set; } = 0;
         public int RatingCount { get; set; } = 0;
         public Category Category { get; set; }
+        public string Description { get; set; }
         public ICollection<BasketItem> BasketItems { get; set; }
-        public ICollection<Comment> Comments { get; set; } = new List<Comment>(); // Yorumlar eklendi
+        public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     }
 }

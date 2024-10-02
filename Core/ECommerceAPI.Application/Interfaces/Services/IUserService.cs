@@ -14,5 +14,6 @@ namespace ECommerceAPI.Application.Interfaces.Services
         Task<IList<string>> GetRolesToUserAsync(string userIdOrName);
         Task<bool> HasRolePermissionToEndpointAsync(string name, string code);
         Task<IList<string>> GetMenusOfUserRolesAsync();
+        Task<UpdatedUserDTO> UpdateUserAsync(string userId, UpdatedUserDTO updateUserDTO);
     }
 }
